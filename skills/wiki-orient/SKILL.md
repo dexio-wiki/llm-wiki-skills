@@ -4,7 +4,7 @@ description: "Read an LLM wiki before working in it or answering from it: the sc
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Orient in a wiki
@@ -27,8 +27,9 @@ Do this once per task, not once per edit. Do not read the whole wiki.
    its one-line description. Hosted wiki over MCP: `list_pages`. You are looking for which
    folders exist and which pages sound like your topic, not reading them.
 3. **Check recent changes.** Folder in git: `git log --since="7 days ago" --stat -- <wiki>`.
-   Hosted: the history tool without a path (on Dexio, `page_history`). This shows what other
-   agents are working on, so you do not redo or undo it.
+   Hosted: the history tool without a path (on Dexio, `page_history`). Plain folder with no
+   history: the most recently modified files (`find <wiki> -name '*.md' -mtime -7`). This
+   shows what other agents are working on, so you do not redo or undo it.
 4. **Search the topic.** Two or three phrasings: the entity's name, the concept, and the words
    a person would use. Folder: `grep -ril` or ripgrep across the wiki. Hosted: `search_pages`.
    Search before concluding that something is not in the wiki.

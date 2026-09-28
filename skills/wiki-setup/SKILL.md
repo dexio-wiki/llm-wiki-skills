@@ -4,7 +4,7 @@ description: "Start a new LLM wiki or bring an existing folder of notes or Obsid
 license: MIT
 metadata:
   author: dexio
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Set up a wiki
@@ -30,6 +30,10 @@ are involved.
    - Thresholds: when a subject gets its own page, when a page should be split (about 200
      lines), and what never goes in (secrets, routine progress, raw chat).
    - Update policy for conflicts, and who to escalate to.
+   - Owner and decision-makers: who gets review digests and escalations, and whose word
+     makes something a decision. Review and capture look for these lines.
+   - Trust labels: the bracketed labels agents put after a claim. The template's three
+     (`(vendor-sourced)`, `(estimate)`, `(unverified)`) are what the other skills use.
 3. **Write `README.md`**: two paragraphs on what is where, for a person opening the folder.
 4. **Point every agent at the schema.** In `AGENTS.md`, `CLAUDE.md`, or the agent's system
    instructions:
@@ -41,18 +45,22 @@ are involved.
    them, following the wiki-* skills. Never put secrets in it.
    ```
 
-5. **Skip the hand-kept index and log** if you have search and history (git, or a hosted
+5. **Ignore run state.** In a git-backed wiki, add `.wiki-state.json` to `.gitignore`;
+   `wiki-capture` and `wiki-review` keep their progress there.
+6. **Skip the hand-kept index and log** if you have search and history (git, or a hosted
    wiki). Use `description:` fields plus a generated catalog instead
    (`wiki_lint.py --catalog` from the `wiki-lint` skill). A hand-edited `index.md` is fine
    for one writer and under about a hundred pages; past that it drifts, and with several
    writers it is where every change collides.
-6. **Seed a few real pages** from real sources (`wiki-ingest`) rather than creating empty
+7. **Seed a few real pages** from real sources (`wiki-ingest`) rather than creating empty
    placeholders for every folder.
 
 ## Existing folder of notes or Obsidian vault
 
 1. Run `wiki-lint` to see what is there: pages, links, broken links, pages with no
    frontmatter.
+   If the folder is not in git, put it in git first (`git init`, one commit of the current
+   state). The other skills lean on history for change notes, recent changes and review.
 2. Write the schema to match the best of the existing structure rather than an ideal one;
    moving hundreds of pages at once is a refactor with its own risks (`wiki-refactor`).
 3. Add frontmatter and descriptions in batches, starting with the most linked pages.

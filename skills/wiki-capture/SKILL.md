@@ -4,7 +4,7 @@ description: "Capture what an agent session settled into an LLM wiki before it i
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Capture a session into the wiki
@@ -33,17 +33,21 @@ again, not a summary of the session.
    - Procedures that worked, including the step that failed before it worked.
    - Preferences or constraints a person stated that will apply again.
 2. **Drop the rest.** Leave out plans that were not decided, the agent's own guesses, task
-   progress, anything already in the wiki, secrets, and anything private a person has not
-   cleared for everyone who reads the wiki. An agent proposing something and nobody
-   objecting is not a decision.
+   progress, anything already in the wiki, secret values, and anything private a person has
+   not cleared for everyone who reads the wiki. An agent proposing something and nobody
+   objecting is not a decision. Where a credential is kept is worth filing; the value never
+   is.
 3. **Check each survivor against the wiki** (`wiki-orient`, search step). Already recorded:
-   skip it, or fix the page if the session showed it is wrong or out of date.
+   skip it. If the session showed the page is wrong or out of date, do not just overwrite
+   it: follow `wiki-conflicts` (superseded when something changed, corrected when the page
+   was wrong), which keeps a dated line of the old claim.
 4. **File each item with `wiki-record`**: on the page that owns it, smallest edit, dated,
    sourced. The source is the session: who said or verified it, and when ("Dana in chat,
    2026-09-28"; "checked on the vendor pricing page, 2026-09-28").
 5. **Ask rather than guess.** If something might be a decision but nobody said so, or a fact
    rests on the agent's reading alone, ask the person in one line before filing it. If they
-   are not there, file it as unconfirmed or leave it out.
+   are not there, leave it out, or file it labelled `(unverified: <why>)` and lower
+   `confidence` if the page carries one. A possible decision is never filed as a decision.
 6. **Report what you filed**, one line per item with the page path, and what you skipped on
    purpose if a person might expect it to be there.
 
@@ -57,14 +61,18 @@ For sessions that ended without a capture:
 1. Find the transcripts. Claude Code keeps them as JSONL under
    `~/.claude/projects/<project>/`; Hermes exports them with `hermes sessions export`; other
    agents document their own location.
-2. Keep a small state file outside the wiki with the last session or timestamp you
-   processed, so each transcript is read once. Do not keep that state in the wiki.
+2. Keep a state file so each transcript is read once. Default: `.wiki-state.json` at the
+   wiki root, listed in `.gitignore` (the checker reads only `.md` files), holding
+   `{"capture": {"done": ["<transcript path or session id>", ...]}}`. On a hosted wiki keep
+   it in the agent's own workspace. Never keep run state in a page.
 3. Read only the person's messages and the agent's final answers first. Tool output is long
    and mostly noise; open it only to confirm a fact you intend to file.
 4. Apply the steps above. Items from old sessions need extra care: check them against the
    current wiki and, for anything mutable, against the source, since they may have changed.
 5. When several agents capture into one wiki, follow `wiki-shared`: search immediately before
-   each write, because another agent may have filed the same item minutes ago.
+   each write, because another agent may have filed the same item minutes ago. Treat the
+   wiki as shared if the schema says so, the history shows more than one writer, or you
+   cannot tell.
 
 ## Pitfalls
 

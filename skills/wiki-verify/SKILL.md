@@ -4,7 +4,7 @@ description: "Fact-check an LLM wiki against its own sources: pick the pages whe
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Verify a wiki
@@ -47,26 +47,37 @@ Default run: three to five pages, or about twenty claims.
      before giving up.
 4. **Fix the page.**
    - Outdated: update the claim with the new source and date (`wiki-conflicts`, superseded).
-   - Unsupported: correct it if you can find what is true, citing that; otherwise weaken it
-     to what the source does say, or mark it `(unverified)` and lower `confidence`.
-   - Unsourced: find a source and cite it, or label the claim unverified.
+   - Unsupported because the source says something different: the page was wrong. Correct it
+     to what the source says, cite it, and keep a dated line of the old value ("corrected
+     2026-09-28, was $15") (`wiki-conflicts`, corrected).
+   - Unsupported because the source says less: weaken the claim to what the source does say.
+     If you cannot settle it, label it `(unverified)` and lower `confidence`, adding the
+     field if the page has none (`medium` for one weak source, `low` for none).
+   - Unsourced: find a source and cite it, or label the claim `(unverified)`.
    - Unreachable: note it inline ("source offline as of 2026-09-28") so the next check
      does not repeat the search.
+   - Supported, but only as a company's claim about itself: add `(vendor-sourced)` if the
+     label is missing.
 5. **Find the copies.** Search the wiki for every corrected claim (the number, the name, the
    key phrase). Fix each page that repeated it. This is the step that stops the error
    compounding.
-6. **Record the check.** Set `verified: YYYY-MM-DD` in the frontmatter of each page you
-   checked end to end, and leave a change note listing what you corrected. Do not bump
-   `verified` on a page you only sampled.
+6. **Record the check.** Set `verified: YYYY-MM-DD` on each page whose checkable claims you
+   all checked that day. It means "checked, and the labels on this page show the result",
+   so a page can carry it with claims still labelled `(unverified)`. Do not set it on a page
+   you only sampled or only fixed a copy on. Leave a change note listing what you
+   corrected: the commit message in git, the `note` field on a hosted wiki. A plain folder
+   has no history, so there the dated correction lines on the page are the record.
 7. **Report**: pages checked, claims checked, how many in each category, corrections made,
-   and anything that needs a person (a disputed decision, a claim you could not settle).
+   anything that needs a person (a disputed decision, a claim you could not settle), and
+   whether a second checker was used.
 
 ## Use a second pair of eyes
 
 A model checking its own synthesis tends to agree with it. Where you can, give each claim and
 its source, without the rest of the page, to a separate agent or a different model and ask
 only "does this source support this claim?". Disagreements between the two are the claims to
-look at closely.
+look at closely. If you cannot, the check still counts, but say in the report that every
+classification is one model's judgment.
 
 ## Pitfalls
 

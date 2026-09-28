@@ -4,7 +4,7 @@ description: "Check an LLM wiki's health and fix what it finds: broken links, le
 license: MIT
 metadata:
   author: dexio
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Lint a wiki
@@ -27,7 +27,8 @@ python3 scripts/wiki_lint.py path/to/wiki --json     # for you to parse
 ```
 
 `scripts/` is inside this skill's folder. Python 3.8 or later, no packages. Options:
-`--stale-days 90`, `--max-lines 200`, `--strict` (also fail on frontmatter problems).
+`--stale-days 90`, `--max-lines 200`, `--strict` (also fail on frontmatter problems),
+`--today 2026-09-28` (measure ages from that date instead of the system clock).
 
 Hosted wiki over MCP: call the host's health tool instead (on Dexio, `wiki_health`). It
 reports the same categories.

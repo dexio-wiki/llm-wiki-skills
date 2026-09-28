@@ -9,6 +9,8 @@ Standard library only, Python 3.8+. Point it at the wiki's root folder:
     python3 wiki_lint.py path/to/wiki --links-to concepts/llm-wiki
     python3 wiki_lint.py path/to/wiki --verify-queue 10   # pages most in need of fact-checking
 
+Add --today YYYY-MM-DD to measure page ages from a given date instead of the system clock.
+
 What it finds:
 
   broken        links to pages that do not exist (the only true defect)
@@ -438,12 +440,15 @@ def verify_queue(wiki: Wiki, now: float, limit: int) -> list:
         f = info["fields"]
         checked = (parse_date(f.get("verified", "")) or parse_date(f.get("updated", ""))
                    or gt.get(p) or info["mtime"])
-        days = max((now - checked) / 86400.0, 1.0)
+        age = max(now - checked, 0.0) / 86400.0
+        days = max(age, 1.0)
         score, reasons = (1 + inbound[p]) * days, []
         if inbound[p]:
             reasons.append("%d pages link here" % inbound[p])
-        reasons.append(("verified" if f.get("verified") else "unchecked since update")
-                       + " %d days ago" % days)
+        whole = int(age)
+        reasons.append(("verified " if f.get("verified") else "unchecked since update ")
+                       + ("today" if whole == 0 else "1 day ago" if whole == 1
+                          else "%d days ago" % whole))
         cited = [f.get(k, "").strip() for k in SOURCE_KEYS]
         if not any(c not in ("", "[]") for c in cited):
             score *= 2
@@ -528,6 +533,8 @@ def main(argv=None) -> int:
                     help="list the N pages most worth fact-checking, with reasons")
     ap.add_argument("--stale-days", type=int, default=90)
     ap.add_argument("--max-lines", type=int, default=200)
+    ap.add_argument("--today", metavar="YYYY-MM-DD",
+                    help="measure page ages as of this date instead of the system clock")
     ap.add_argument("--strict", action="store_true",
                     help="also exit 1 on frontmatter problems")
     args = ap.parse_args(argv)
@@ -536,6 +543,13 @@ def main(argv=None) -> int:
     if not root.is_dir():
         print("not a folder: %s" % root, file=sys.stderr)
         return 2
+    now = time.time()
+    if args.today:
+        start = parse_date(args.today) if DATE.match(args.today) else None
+        if start is None:
+            print("--today needs a date like 2026-09-28", file=sys.stderr)
+            return 2
+        now = start + 86399
     wiki = Wiki(root)
 
     if args.catalog:
@@ -548,7 +562,7 @@ def main(argv=None) -> int:
         print("\n".join(hits) if hits else "no page links to %s" % target)
         return 0
     if args.verify_queue:
-        rows = verify_queue(wiki, time.time(), args.verify_queue)
+        rows = verify_queue(wiki, now, args.verify_queue)
         if args.json:
             print(json.dumps(rows, indent=2))
         else:
@@ -556,7 +570,7 @@ def main(argv=None) -> int:
                 print("%-50s %8.1f  %s" % (r["path"], r["score"], "; ".join(r["reasons"])))
         return 0
 
-    report = check(wiki, args.stale_days, args.max_lines, time.time())
+    report = check(wiki, args.stale_days, args.max_lines, now)
     report["secrets"] = find_secrets(wiki)
     report["stats"]["secrets"] = len(report["secrets"])
     if args.json:

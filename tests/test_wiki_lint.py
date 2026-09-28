@@ -212,6 +212,18 @@ class TestSecretsAndVerifyQueue(WikiCase):
         self.assertEqual(code, 0)
         self.assertTrue(out.startswith("hub"))
 
+    def test_verify_queue_ages_and_today_flag(self):
+        self.write("a.md", page("A", "").replace("---\n\n", "verified: 2026-09-28\n---\n\n"))
+        self.write("b.md", page("B", "", updated="2026-09-27"))
+        rows = {r["path"]: r for r in wl.verify_queue(wl.Wiki(self.root),
+                                                       wl.parse_date("2026-09-28") + 3600, 5)}
+        self.assertIn("verified today", rows["a"]["reasons"])
+        self.assertIn("unchecked since update 1 day ago", rows["b"]["reasons"])
+        code, out = self.run_main("--verify-queue", "5", "--today", "2026-10-08")
+        self.assertEqual(code, 0)
+        self.assertIn("verified 10 days ago", out)
+        self.assertEqual(self.run_main("--today", "next week")[0], 2)
+
 
 class TestCli(WikiCase):
     def test_exit_codes_json_catalog_and_links_to(self):

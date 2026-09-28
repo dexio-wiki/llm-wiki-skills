@@ -17,6 +17,9 @@ This wiki stores curated, durable knowledge. It is not a transcript store and no
 of record for live data: for anything that can change, it says what was true when written and
 where to check.
 
+Owner: <person or role who gets review digests and escalations>
+Decisions are made by: <people whose word makes something a decision; agents propose>
+
 ## Layout
 
 - `concepts/`: ideas, methods, terms
@@ -80,8 +83,11 @@ Add a tag here before using it on a page.
 ## Writing
 
 - Date anything that can change ("as of YYYY-MM-DD", or "read YYYY-MM-DD" for a source).
-- Cite the source next to the claim. Label vendor claims vendor-sourced, recalled claims
-  unverified, and derived figures as estimates.
+- Cite the source next to the claim.
+- Label claims that are not first-hand, in brackets after the claim: `(vendor-sourced)` for a
+  company's claim about itself, `(estimate)` for derived figures, `(unverified)` for anything
+  recalled, unconfirmed or unsourced, with a reason after a colon when it helps
+  (`(unverified: one chat, not checked)`).
 - Edit the smallest section that records the change. Leave a note on every change saying
   what changed and why, under the writer's name.
 
@@ -91,7 +97,7 @@ Add a tag here before using it on a page.
 2. Replace a claim only when the new one is clearly more authoritative; keep a dated line of
    what it replaced when the history matters.
 3. Otherwise keep both, set `contested: true`, and lower `confidence`.
-4. Escalate material conflicts to <person or role>.
+4. Escalate material conflicts to the owner.
 
 ## Before substantial work
 

@@ -4,7 +4,7 @@ description: "File a decision, finding or fact into an LLM wiki the right way: f
 license: MIT
 metadata:
   author: dexio
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Record something in a wiki
@@ -50,8 +50,10 @@ Leave it out:
      2026-09-28)", not "Team plan is $10".
    - Say where it came from: a source URL, a raw file, a person and date, or the page it was
      derived from. Put the source next to the claim if the page has several sources.
-   - Label trust when it is not first-hand: vendor-published numbers as vendor-sourced,
-     anything recalled rather than read as unverified, estimates as estimates.
+   - Label trust when it is not first-hand, with the schema's labels in brackets after the
+     claim: `(vendor-sourced)` for a company's claim about itself, `(estimate)` for derived
+     figures, `(unverified)` for anything recalled, unconfirmed or unsourced, with the reason
+     after a colon when it helps (`(unverified: from one chat, not checked)`).
    - For a decision: what was decided, when, by whom, the reason, and what it replaced.
 5. **Update the frontmatter.** Bump `updated`. Add the source to `sources`. Make sure
    `description` still says what the page holds after your change. New pages get the full
@@ -73,7 +75,9 @@ Leave it out:
    If you mention another page's subject by name, make it a link.
 7. **Leave a change note.** Git: a commit message saying what changed and why, one change per
    commit. Hosted wiki: the `note` field on the write, with your agent name. "Add Q3 pricing
-   from vendor page; replaces August figure" is a note. "Update page" is not.
+   from vendor page; replaces August figure" is a note. "Update page" is not. A plain folder
+   has no history: there the dates and sources in the text are the record, so keep a dated
+   line of anything you replace, and suggest putting the wiki in git.
 8. **Tell the person what you recorded and where**, by path, in one line.
 
 ## Conflicts

@@ -54,6 +54,12 @@ Hermes Agent, one skill at a time:
 hermes skills install dexio-wiki/llm-wiki-skills/skills/wiki-lint
 ```
 
+OpenClaw, from [ClawHub](https://clawhub.ai/dexio), where each skill is prefixed `dexio-`:
+
+```bash
+clawhub install dexio-wiki-lint
+```
+
 Or copy the folders under `skills/` into your agent's skills directory.
 
 Then tell the agent where the wiki is, for example in `AGENTS.md` or `CLAUDE.md`:

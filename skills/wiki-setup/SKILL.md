@@ -1,10 +1,10 @@
 ---
 name: wiki-setup
-description: "Start a new LLM wiki or bring an existing folder of notes under maintenance: write the SCHEMA page that tells every agent the wiki's domain, folder layout, page types, frontmatter, tags and thresholds, and point each agent's instructions file at it. Use when creating a knowledge base that agents will maintain, when a wiki has no schema page, or when agents keep writing pages in inconsistent shapes."
+description: "Start a new LLM wiki or bring an existing folder of notes or Obsidian vault under maintenance: write the SCHEMA page that tells every agent the wiki's domain, folder layout, page types, frontmatter, tags and thresholds, and point each agent's instructions file at it. Use when creating a knowledge base that agents will maintain, when a wiki has no schema page, or when agents keep writing pages in inconsistent shapes."
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Set up a wiki
@@ -49,7 +49,7 @@ are involved.
 6. **Seed a few real pages** from real sources (`wiki-ingest`) rather than creating empty
    placeholders for every folder.
 
-## Existing folder of notes
+## Existing folder of notes or Obsidian vault
 
 1. Run `wiki-lint` to see what is there: pages, links, broken links, pages with no
    frontmatter.

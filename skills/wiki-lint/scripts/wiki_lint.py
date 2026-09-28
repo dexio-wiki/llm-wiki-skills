@@ -7,10 +7,13 @@ Standard library only, Python 3.8+. Point it at the wiki's root folder:
     python3 wiki_lint.py path/to/wiki --json          # machine-readable report
     python3 wiki_lint.py path/to/wiki --catalog       # every page with its description
     python3 wiki_lint.py path/to/wiki --links-to concepts/llm-wiki
+    python3 wiki_lint.py path/to/wiki --verify-queue 10   # pages most in need of fact-checking
 
 What it finds:
 
   broken        links to pages that do not exist (the only true defect)
+  secrets       strings shaped like credentials: API keys, tokens, private keys,
+                passwords in URLs (also a defect; values are masked in the output)
   wanted        broken-link targets ranked by how many pages want them
   unreferenced  pages nothing links to (hard to find by browsing)
   orphaned      pages with no links in or out
@@ -26,8 +29,8 @@ from the wiki root, then to the path relative to the linking page, then to the
 one page with that file name (Obsidian's shortest-path style). Links inside
 code, HTML comments, to URLs and to files such as images or PDFs are ignored.
 
-Exit status is 1 when a link is broken (or, with --strict, when any page has a
-frontmatter problem), so the script can gate a commit or a CI job.
+Exit status is 1 when a link is broken or a secret is found (or, with --strict,
+when any page has a frontmatter problem), so the script can gate a commit or CI.
 """
 from __future__ import annotations
 
@@ -50,6 +53,26 @@ H1 = re.compile(r"^#\s+(.+?)\s*#*\s*$", re.M)
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*:/|mailto:|tel:)")
 ROW_LIMIT = 25
+
+# Credential shapes. Specific formats first; the generic assignment rule needs a
+# long value mixing letters and digits so prose and placeholders do not trip it.
+SECRETS = [
+    ("AWS access key", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+    ("GitHub token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,})\b")),
+    ("Slack token", re.compile(r"\bxox[abposr]-[A-Za-z0-9-]{10,}")),
+    ("Stripe key", re.compile(r"\b[rs]k_live_[A-Za-z0-9]{20,}")),
+    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("Linear key", re.compile(r"\blin_api_[A-Za-z0-9]{30,}")),
+    ("AI provider key", re.compile(r"\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{32,}")),
+    ("private key", re.compile(r"-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----")),
+    ("password in URL", re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@]+:([^\s@/]{3,})@")),
+    ("assigned secret", re.compile(
+        r"(?i)\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\b"
+        r"[\"']?\s*[:=]\s*[\"']?([A-Za-z0-9_\-+/=.]{16,})")),
+]
+PLACEHOLDER = re.compile(r"(?i)(x{4,}|\*{3,}|your|example|placeholder|redacted|changeme|dummy|<|\$\{)")
+# Frontmatter keys that cite where a page's content came from.
+SOURCE_KEYS = ("sources", "source", "source_url", "references", "citations")
 
 SKIP_DIRS = {".git", ".obsidian", ".trash", "node_modules", ".venv", "venv", "__pycache__"}
 # Entry points and generated catalogs, at any depth: nothing has to link to them,
@@ -104,14 +127,21 @@ def split_frontmatter(text: str):
         return {}, text, False
     for i in range(1, len(lines)):
         if lines[i].strip() in ("---", "..."):
-            fields = {}
+            fields, last = {}, None
             for raw in lines[1:i]:
+                item = re.match(r"^\s+-\s+(.*?)\s*$", raw)
+                if item and last is not None:      # YAML block list under `last:`
+                    prev = fields[last]
+                    fields[last] = (prev[:-1] + ", " if prev.endswith("]") else "[") \
+                        + item.group(1) + "]"
+                    continue
                 m = re.match(r"^([A-Za-z_][\w-]*)\s*:\s*(.*?)\s*$", raw)
                 if m:
                     val = m.group(2)
                     if len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
                         val = val[1:-1]
                     fields[m.group(1).lower()] = val
+                    last = m.group(1).lower() if not val else None
             return fields, "".join(lines[i + 1:]), True
     return {}, text, False
 
@@ -368,11 +398,76 @@ def day(ts: float) -> str:
     return dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime("%Y-%m-%d")
 
 
+def find_secrets(wiki: Wiki) -> list:
+    """Credential-shaped strings on any page, raw sources included. The value is
+    masked: the point is to find and remove it, not to repeat it."""
+    out = []
+    for p, info in sorted(wiki.pages.items()):
+        for n, line in enumerate(info["text"].splitlines(), 1):
+            for kind, pattern in SECRETS:
+                for m in pattern.finditer(line):
+                    value = m.group(m.lastindex or 0)
+                    if PLACEHOLDER.search(value) or PLACEHOLDER.search(m.group(0)):
+                        continue
+                    if kind == "assigned secret" and not (re.search(r"[A-Za-z]", value)
+                                                          and re.search(r"\d", value)):
+                        continue
+                    shown = value[:4] if len(value) >= 20 else ""
+                    out.append({"path": p, "line": n, "kind": kind,
+                                "masked": "%s... (%d chars)" % (shown, len(value))})
+                    break
+                else:
+                    continue
+                break
+    return out
+
+
+def verify_queue(wiki: Wiki, now: float, limit: int) -> list:
+    """Pages ranked by how much a fact-check would be worth: how many pages link to
+    them (an error there spreads), how long since anyone checked them (`verified:`,
+    else `updated:`), and whether they cite nothing, are contested, low-confidence,
+    or record a decision."""
+    inbound = {p: 0 for p in wiki.pages}
+    for _, dst in set(wiki.edges):
+        inbound[dst] += 1
+    gt = git_times(wiki.root)
+    rows = []
+    for p, info in wiki.pages.items():
+        if under(p, RAW_DIRS + ARCHIVE_DIRS) or is_entry(p):
+            continue
+        f = info["fields"]
+        checked = (parse_date(f.get("verified", "")) or parse_date(f.get("updated", ""))
+                   or gt.get(p) or info["mtime"])
+        days = max((now - checked) / 86400.0, 1.0)
+        score, reasons = (1 + inbound[p]) * days, []
+        if inbound[p]:
+            reasons.append("%d pages link here" % inbound[p])
+        reasons.append(("verified" if f.get("verified") else "unchecked since update")
+                       + " %d days ago" % days)
+        cited = [f.get(k, "").strip() for k in SOURCE_KEYS]
+        if not any(c not in ("", "[]") for c in cited):
+            score *= 2
+            reasons.append("no sources")
+        if f.get("contested", "").lower() == "true":
+            score *= 2
+            reasons.append("contested")
+        if f.get("confidence", "").lower() == "low":
+            score *= 1.5
+            reasons.append("low confidence")
+        if f.get("type", "").lower() == "decision":
+            score *= 1.5
+            reasons.append("decision")
+        rows.append({"path": p, "score": round(score, 1), "reasons": reasons})
+    rows.sort(key=lambda r: (-r["score"], r["path"]))
+    return rows[:limit]
+
+
 # ---- output ----------------------------------------------------------------------
 
 def print_report(r: dict, max_lines: int, stale_days: int) -> None:
     s = r["stats"]
-    print("%s: %d pages, %d links, %d broken" % (r["root"], s["pages"], s["links"], s["broken"]))
+    print("%s: %d pages, %d links, %d broken, %d secrets"
+          % (r["root"], s["pages"], s["links"], s["broken"], s["secrets"]))
 
     def section(title, rows):
         if rows:
@@ -384,6 +479,9 @@ def print_report(r: dict, max_lines: int, stale_days: int) -> None:
 
     section("Broken links: fix these", ["%s -> [[%s]]" % (b["source"], b["target"])
                                          for b in r["broken"]])
+    section("Possible secrets: remove these, then rotate them",
+            ["%s:%d %s %s" % (x["path"], x["line"], x["kind"], x["masked"])
+             for x in r["secrets"]])
     section("Wanted pages, most linked first",
             ["%s (from %d: %s)" % (w["target"], w["linked_from"], ", ".join(w["for_example"]))
              for w in r["wanted"] if w["linked_from"] > 1])
@@ -400,8 +498,8 @@ def print_report(r: dict, max_lines: int, stale_days: int) -> None:
             ["%s: %d lines" % (x["path"], x["lines"]) for x in r["long"]])
     section("Duplicate titles", ["%s: %s" % (d["title"], ", ".join(d["paths"]))
                                  for d in r["duplicates"]])
-    if not s["broken"]:
-        print("\nNo broken links.")
+    if not s["broken"] and not s["secrets"]:
+        print("\nNo broken links or secrets.")
 
 
 def catalog(wiki: Wiki) -> None:
@@ -426,6 +524,8 @@ def main(argv=None) -> int:
     ap.add_argument("--catalog", action="store_true",
                     help="print every page with its title and description, by folder")
     ap.add_argument("--links-to", metavar="PAGE", help="list the pages that link to PAGE")
+    ap.add_argument("--verify-queue", type=int, metavar="N",
+                    help="list the N pages most worth fact-checking, with reasons")
     ap.add_argument("--stale-days", type=int, default=90)
     ap.add_argument("--max-lines", type=int, default=200)
     ap.add_argument("--strict", action="store_true",
@@ -447,13 +547,23 @@ def main(argv=None) -> int:
                       | {s for s, t in wiki.broken if t == target})
         print("\n".join(hits) if hits else "no page links to %s" % target)
         return 0
+    if args.verify_queue:
+        rows = verify_queue(wiki, time.time(), args.verify_queue)
+        if args.json:
+            print(json.dumps(rows, indent=2))
+        else:
+            for r in rows:
+                print("%-50s %8.1f  %s" % (r["path"], r["score"], "; ".join(r["reasons"])))
+        return 0
 
     report = check(wiki, args.stale_days, args.max_lines, time.time())
+    report["secrets"] = find_secrets(wiki)
+    report["stats"]["secrets"] = len(report["secrets"])
     if args.json:
         print(json.dumps(report, indent=2))
     else:
         print_report(report, args.max_lines, args.stale_days)
-    if report["broken"] or (args.strict and report["frontmatter"]):
+    if report["broken"] or report["secrets"] or (args.strict and report["frontmatter"]):
         return 1
     return 0
 

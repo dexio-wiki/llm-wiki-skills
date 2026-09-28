@@ -8,16 +8,18 @@ afternoon. Keeping it right is the hard part: new facts land on duplicate pages,
 their sources, a newer blog post quietly overwrites a better-sourced number, links break on
 every rename, and a second agent's rewrite wipes out the first one's work.
 
-These nine skills are the maintenance rules. They use the open
+These twelve skills are the maintenance rules. They use the open
 [Agent Skills](https://agentskills.io) format, so they work in Claude Code, Codex, Cursor,
 OpenCode, Hermes Agent, OpenClaw and other agents that read `SKILL.md`. One of them ships a
-zero-dependency checker for broken links and page health.
+zero-dependency checker for broken links, leaked credentials and page health.
 
 ## Skills
 
 - **wiki-setup**: write the schema page that tells every agent how the wiki is organized, and
-  point each agent at it.
+  point each agent at it. Works for a new wiki or an existing Obsidian vault.
 - **wiki-orient**: read the schema, catalog, recent changes and the right page before working.
+- **wiki-capture**: at the end of a session, file what it settled (decisions, verified facts,
+  corrections, procedures that worked) and drop the chatter. Also runs over saved transcripts.
 - **wiki-record**: file a decision or finding on the page that owns it, with a small edit,
   dates, sources and a change note.
 - **wiki-ingest**: compile a source into every page it touches, keep an immutable hashed raw
@@ -25,7 +27,11 @@ zero-dependency checker for broken links and page health.
 - **wiki-query**: answer from the wiki with citations, check live facts at the source, and file
   substantial answers back.
 - **wiki-lint**: find broken links, orphans, missing descriptions, stale and oversized pages,
-  and fix them in the right order.
+  and leaked credentials, and fix them in the right order.
+- **wiki-verify**: fact-check the pages where an error would spread furthest against their own
+  sources, then fix every page that copied a wrong claim.
+- **wiki-review**: read recent agent edits as diffs, fix or revert the bad ones, promote drafts,
+  and send a person a short digest.
 - **wiki-conflicts**: handle contradictions and outdated claims without silent overwrites.
 - **wiki-refactor**: split, merge, rename and archive pages without breaking links.
 - **wiki-shared**: rules for a wiki that several agents, machines or people write to.
@@ -80,14 +86,16 @@ python3 skills/wiki-lint/scripts/wiki_lint.py path/to/wiki
 python3 skills/wiki-lint/scripts/wiki_lint.py path/to/wiki --json
 python3 skills/wiki-lint/scripts/wiki_lint.py path/to/wiki --catalog
 python3 skills/wiki-lint/scripts/wiki_lint.py path/to/wiki --links-to concepts/some-page
+python3 skills/wiki-lint/scripts/wiki_lint.py path/to/wiki --verify-queue 10
 ```
 
 It reads `[[wikilinks]]` (with `|labels` and `#headings`) and relative markdown links, skips
 code, comments, URLs and file links, and resolves a target the way Obsidian does: exact path,
 then relative to the linking page, then the one page with that name. It reports broken links,
-the missing pages most linked to, orphaned and unreferenced pages, frontmatter gaps, stale
-pages, long pages and duplicate titles. It exits 1 on a broken link, so it can gate a commit
-or a CI job.
+credential-shaped strings (masked in the output), the missing pages most linked to, orphaned
+and unreferenced pages, frontmatter gaps, stale pages, long pages and duplicate titles.
+`--verify-queue` ranks the pages most worth fact-checking. It exits 1 on a broken link or a
+possible secret, so it can gate a commit or a CI job.
 
 ## Where these come from
 

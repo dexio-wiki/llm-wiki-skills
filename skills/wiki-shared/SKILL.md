@@ -4,7 +4,7 @@ description: "Rules for an LLM wiki that several agents, machines or people writ
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Share a wiki between writers
@@ -47,7 +47,8 @@ cleanup.
    person.
 7. **Draft freely, promote deliberately.** Where accuracy matters more than speed, agents
    write to `drafts/` or mark pages `status: draft`, and a person or a reviewing agent
-   promotes them. Use this for decisions and anything customer-facing, not for every note.
+   promotes them (`wiki-review`). Use this for decisions and anything customer-facing, not for
+   every note.
 8. **Keep scope explicit.** If some readers must not see some content (a client, a
    household, a private project), give it its own wiki or folder with its own access, and
    never merge pages across that boundary. A `scope:` or `tenant:` field on pages helps
@@ -64,6 +65,8 @@ cleanup.
   history does it for them.
 - A scheduled lint (`wiki-lint`) that one agent runs and reports on, so link and frontmatter
   drift is caught weekly rather than when someone needs the page.
+- A scheduled review of agent edits (`wiki-review`) by an agent that did not make them, and a
+  capture step at the end of each agent's sessions (`wiki-capture`).
 
 ## Pitfalls
 

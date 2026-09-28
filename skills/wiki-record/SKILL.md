@@ -4,7 +4,7 @@ description: "File a decision, finding or fact into an LLM wiki the right way: f
 license: MIT
 metadata:
   author: dexio
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Record something in a wiki
@@ -30,6 +30,8 @@ Leave it out:
 - raw transcripts or chat logs (keep a source under `raw/` via `wiki-ingest` if it matters)
 - commit hashes, PR numbers, and other details the code host already records
 - secrets of any kind: tokens, keys, passwords, connection strings, payment details
+  (`wiki-lint` flags credential-shaped strings; write where a credential lives, never the
+  value)
 - anything private a person has not said is fine to share with everyone who reads the wiki
 
 ## Steps

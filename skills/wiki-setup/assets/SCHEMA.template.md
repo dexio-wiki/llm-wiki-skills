@@ -46,6 +46,7 @@ sources: [raw/articles/source-name.md, https://example.com/page]
 confidence: high | medium | low      # optional; use for fast-moving or single-source pages
 contested: false                     # optional; true while a conflict is unresolved
 stale_after: YYYY-MM-DD              # optional; recheck on or after this date
+verified: YYYY-MM-DD                 # optional; last date the claims were checked against sources
 ---
 ```
 

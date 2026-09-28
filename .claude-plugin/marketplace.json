@@ -6,21 +6,24 @@
   },
   "metadata": {
     "description": "Agent skills for maintaining LLM wikis",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "llm-wiki-skills",
-      "description": "Nine skills for keeping an LLM wiki correct as it grows: setup, orient, record, ingest, query, lint, conflicts, refactor, and sharing one wiki between agents. Includes a zero-dependency link checker.",
+      "description": "Twelve skills for keeping an LLM wiki correct as it grows: setup, orient, capture, record, ingest, query, lint, verify, review, conflicts, refactor, and sharing one wiki between agents. Includes a zero-dependency checker for broken links and leaked credentials.",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/wiki-setup",
         "./skills/wiki-orient",
+        "./skills/wiki-capture",
         "./skills/wiki-record",
         "./skills/wiki-ingest",
         "./skills/wiki-query",
         "./skills/wiki-lint",
+        "./skills/wiki-verify",
+        "./skills/wiki-review",
         "./skills/wiki-conflicts",
         "./skills/wiki-refactor",
         "./skills/wiki-shared"

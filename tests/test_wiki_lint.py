@@ -155,6 +155,64 @@ class TestPages(WikiCase):
         self.assertEqual(r["duplicates"][0]["paths"], ["a", "b"])
 
 
+class TestSecretsAndVerifyQueue(WikiCase):
+    # Fake credentials are assembled at run time so no credential-shaped literal
+    # sits in this file.
+    AWS = "AKIA" + "Q" * 8 + "7" * 8
+    GH = "gh" + "p_" + "a1B2" * 9
+    PEM = "-----BEGIN RSA " + "PRIVATE KEY-----"
+
+    def test_finds_and_masks_credentials(self):
+        self.write("a.md", page("A", "key %s here\n\n```\n%s\n```\n" % (self.AWS, self.GH)))
+        self.write("raw/dump.md", self.PEM + "\n")
+        self.write("b.md", page("B", "db: postgres://app:s3cretpass@db.internal/x\n"
+                                     "api_key = 9f8e7d6c5b4a39281706f5e4\n"))
+        found = wl.find_secrets(wl.Wiki(self.root))
+        kinds = sorted((f["path"], f["kind"]) for f in found)
+        self.assertEqual(kinds, [("a", "AWS access key"), ("a", "GitHub token"),
+                                 ("b", "assigned secret"), ("b", "password in URL"),
+                                 ("raw/dump", "private key")])
+        for f in found:
+            self.assertNotIn(self.AWS, f["masked"])
+            self.assertNotIn("s3cretpass", f["masked"])
+
+    def test_ignores_placeholders_and_prose(self):
+        self.write("a.md", page("A", "api_key: YOUR_API_KEY_HERE_12345\n"
+                                     "password: <set in .env>\n"
+                                     "token: see the vault\n"
+                                     "https://user:****@example.com\n"
+                                     "The secret = keeping pages small.\n"))
+        self.assertEqual(wl.find_secrets(wl.Wiki(self.root)), [])
+
+    def test_secret_fails_the_run(self):
+        self.write("a.md", page("A", self.AWS))
+        code, out = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("AWS access key", out)
+        self.assertNotIn(self.AWS, out)
+
+    def test_verify_queue_ranks_by_links_age_and_risk(self):
+        now = wl.parse_date("2026-09-28")
+        self.write("hub.md", page("Hub", "", updated="2026-06-01"))
+        for i in range(3):
+            self.write("p%d.md" % i, page("P%d" % i, "[[hub]]", updated="2026-09-27")
+                       .replace("---\n\n", "sources: [x]\nverified: 2026-09-27\n---\n\n"))
+        self.write("fresh.md", page("Fresh", "", updated="2026-09-27")
+                   .replace("---\n\n", "sources: [x]\nverified: 2026-09-27\n---\n\n"))
+        self.write("listed.md", "---\ntitle: Listed\nupdated: 2026-09-27\nreferences:\n"
+                                "  - https://a.example\n  - raw/b.md\n---\n")
+        wiki = wl.Wiki(self.root)
+        self.assertEqual(wiki.pages["listed"]["fields"]["references"],
+                         "[https://a.example, raw/b.md]")
+        rows = wl.verify_queue(wiki, now, 3)
+        self.assertEqual(rows[0]["path"], "hub")
+        self.assertIn("3 pages link here", rows[0]["reasons"])
+        self.assertIn("no sources", rows[0]["reasons"])
+        code, out = self.run_main("--verify-queue", "2")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("hub"))
+
+
 class TestCli(WikiCase):
     def test_exit_codes_json_catalog_and_links_to(self):
         self.write("a.md", page("A", "[[b]]", desc="Holds A."))

@@ -1,0 +1,16 @@
+{
+  "name": "dexio",
+  "displayName": "Dexio",
+  "version": "1.0.0",
+  "description": "A wiki your agents keep. Connects Dexio's hosted wiki over MCP, where agents read, search and edit linked pages with per-change history and broken-link checks, and adds twelve skills for keeping an LLM wiki correct: setup, orient, capture, record, ingest, query, lint, verify, review, conflicts, refactor and shared wikis. The skills also work on a local folder of markdown.",
+  "author": {
+    "name": "Dexio"
+  },
+  "homepage": "https://dexio.wiki",
+  "repository": "https://github.com/dexio-wiki/llm-wiki-skills",
+  "license": "MIT",
+  "keywords": ["wiki", "llm-wiki", "memory", "knowledge-base", "mcp", "markdown", "obsidian", "agents"],
+  "logo": "assets/logo.svg",
+  "skills": "skills",
+  "mcpServers": "mcp.json"
+}

@@ -54,10 +54,8 @@ Claude Code:
 /plugin install llm-wiki-skills@dexio
 ```
 
-Cursor: this repo is also a Cursor plugin (`.cursor-plugin/plugin.json`). It adds the twelve
-skills and [Dexio](https://dexio.wiki)'s hosted wiki as an MCP server
-(`https://app.dexio.wiki/mcp`), which asks you to sign in the first time an agent uses it.
-The skills work without it.
+Cursor: the [Dexio plugin](https://github.com/dexio-wiki/cursor-plugin) bundles these skills
+with Dexio's hosted wiki, or install them with the skills CLI above.
 
 Hermes Agent, one skill at a time:
 

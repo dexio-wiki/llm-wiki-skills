@@ -1,6 +1,5 @@
-"""Check every skill against the Agent Skills spec (agentskills.io/specification), that
-the Claude Code marketplace lists them all, and the Cursor plugin manifest. Standard
-library only.
+"""Check every skill against the Agent Skills spec (agentskills.io/specification) and
+that the Claude Code marketplace lists them all. Standard library only.
 
     python3 tests/check_skills.py
 """
@@ -28,30 +27,6 @@ def frontmatter(text):
                 val = json.loads(val)
             fields[m.group(1)] = val
     return fields
-
-
-def check_cursor_plugin():
-    """The Cursor plugin manifest (cursor.com/docs/plugins/building): a valid name, and
-    every path relative, inside the repo and present. mcp.json names a URL or command."""
-    errors = []
-    manifest = json.loads((ROOT / ".cursor-plugin" / "plugin.json").read_text())
-    if not re.match(r"^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$", manifest.get("name", "")):
-        errors.append(".cursor-plugin/plugin.json: invalid name")
-    for field in ("logo", "skills", "mcpServers"):
-        value = manifest.get(field)
-        if not isinstance(value, str):
-            errors.append(".cursor-plugin/plugin.json: %s should be a path" % field)
-            continue
-        target = (ROOT / value).resolve()
-        if value.startswith("/") or ".." in Path(value).parts or not target.exists():
-            errors.append(".cursor-plugin/plugin.json: bad %s path %r" % (field, value))
-    servers = json.loads((ROOT / manifest.get("mcpServers", "mcp.json")).read_text())
-    for name, server in servers.get("mcpServers", {}).items():
-        if not (server.get("url") or server.get("command")):
-            errors.append("mcp.json: server %r has no url or command" % name)
-    if not servers.get("mcpServers"):
-        errors.append("mcp.json: no servers")
-    return errors
 
 
 def main():
@@ -83,8 +58,6 @@ def main():
     for d in skills:
         if "./" + d.relative_to(ROOT).as_posix() not in listed:
             errors.append("%s: missing from marketplace.json" % d.relative_to(ROOT))
-
-    errors += check_cursor_plugin()
 
     for e in errors:
         print(e)

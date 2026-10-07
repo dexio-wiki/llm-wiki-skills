@@ -4,8 +4,8 @@ Agent skills for keeping an LLM wiki correct as it grows.
 
 Karpathy's [LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
 has an agent compile sources into a folder of linked markdown pages. Building one takes an
-afternoon. Keeping it right is the hard part: new facts land on duplicate pages, claims lose
-their sources, a newer blog post quietly overwrites a better-sourced number, links break on
+afternoon. Keeping it right is harder, because new facts land on duplicate pages, claims lose
+their sources, a newer blog post silently overwrites a better-sourced number, links break on
 every rename, and a second agent's rewrite wipes out the first one's work.
 
 These twelve skills are the maintenance rules. They use the open
